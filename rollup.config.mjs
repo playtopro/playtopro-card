@@ -7,7 +7,7 @@ export default {
   output: {
     file: "dist/playtopro-card.js",
     format: "es",
-    sourcemap: true,
+    sourcemap: false,
     inlineDynamicImports: true,              // <- critical: disables chunking
   },
   plugins: [
