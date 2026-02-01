@@ -2,7 +2,7 @@ import { LitElement, html, nothing, css } from "lit";
 import type { HomeAssistant, LovelaceCardEditor } from "custom-card-helpers";
 import type { PlayToProCardConfig } from "../playtopro-card";
 
-// Optional: a minimal local type for the device filter
+// Minimal device type for filtering (no internal HA types needed)
 type DeviceRegistryEntryLite = {
   id: string;
   model?: string;
@@ -14,10 +14,10 @@ export class PlayToProCardEditor
   extends LitElement
   implements LovelaceCardEditor
 {
-  // 🔹 No decorators — use Lit's static property declaration
+  // No decorators — React-style: explicit fields + static properties
   static properties = {
-    hass:  { attribute: false },
-    config:{ attribute: false },
+    hass:   { attribute: false },
+    config: { attribute: false },
   };
 
   public hass!: HomeAssistant;
@@ -49,24 +49,20 @@ export class PlayToProCardEditor
           .hass=${this.hass}
           .value=${this.config.device_id}
           .deviceFilter=${this._deviceFilter}
-          @value-changed=${this._deviceChanged}
+          @value-changed=${this._onDeviceChanged}
         ></ha-device-picker>
       </div>
     `;
   }
 
-  private _deviceChanged = (ev: CustomEvent<{ value?: string }>) => {
+  private _onDeviceChanged = (ev: CustomEvent<{ value?: string }>) => {
     const deviceId = ev.detail?.value ?? "";
     this.config = { ...(this.config ?? { type: "playtopro-card" }), device_id: deviceId };
-    this.dispatchEvent(
-      new CustomEvent("config-changed", {
-        detail: { config: this.config },
-      })
-    );
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this.config } }));
   };
 }
 
-// 🔹 Explicit registration (no @customElement)
+// Explicit registration (no @customElement)
 customElements.define("playtopro-card-editor", PlayToProCardEditor);
 
 declare global {

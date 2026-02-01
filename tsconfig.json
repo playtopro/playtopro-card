@@ -11,15 +11,9 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
 
-    /* Make TS & the plugin stop asking for source maps */
     "sourceMap": false,
-    "inlineSources": false,
-
-    /* Let Rollup control emitting; this flag is not required */
-    // "noEmit": true,
-
-    "types": []
+    "inlineSources": false
   },
-  "include": ["src/**/*.ts", "src/**/*.js"],
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules"]
 }

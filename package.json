@@ -15,5 +15,8 @@
     "rollup": "^4.57.1",
     "rollup-plugin-copy": "^3.5.0",
     "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20 <21"
   }
 }

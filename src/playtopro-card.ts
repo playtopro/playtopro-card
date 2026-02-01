@@ -1,15 +1,16 @@
-// Stand-alone custom Lovelace card for Home Assistant
-// Build as a single ES module (dist/playtopro-card.js) and load as a resource.
+// src/playtopro-card.ts
+// A React-style (class + constructor + explicit state) custom Lovelace card.
+// No decorators, no Babel needed. Bundles to a single ES module for HACS.
 
 import { LitElement, html, css } from "lit";
 import type { HassEntity } from "home-assistant-js-websocket";
 import type { HomeAssistant, LovelaceCardConfig } from "custom-card-helpers";
-import { fireEvent } from "custom-card-helpers";
 
-// Bundle the editor into the same output so HACS only needs one file
+// Ship the editor in the same bundle so HACS only needs one file.
+// (The file below is provided in section 2)
 import "./editor/playtopro-card-editor";
 
-// --- Types -------------------------------------------------------------------
+// ---------------- Types ----------------
 
 export interface PlayToProCardConfig extends LovelaceCardConfig {
   device_id: string;
@@ -35,7 +36,7 @@ interface ShowNotificationEventDetail {
   duration?: number;
 }
 
-// --- Hard-coded entity mapping (can be moved to user config later) -----------
+// ----------- Hard-coded entity mapping (adjust later if desired) ------------
 
 const entityConfig: PlayToProConfig = {
   eco_mode_factor: "sensor.eco_mode_factor",
@@ -72,8 +73,7 @@ const entityConfig: PlayToProConfig = {
       name: "Eco Mode",
       icon: "mdi:leaf",
       entity_id: "switch.eco_mode",
-      information:
-        "Turn on eco mode to save water during cooler and wet weather",
+      information: "Turn on eco mode to save water during cooler and wet weather",
       entities: [
         "switch.zone_01_eco_mode",
         "switch.zone_02_eco_mode",
@@ -116,19 +116,10 @@ const entityConfig: PlayToProConfig = {
   ],
 };
 
-// --- Card implementation -----------------------------------------------------
+// ---------------- Card (React-style class) ----------------
 
 export class PlaytoproCard extends LitElement {
-  // 🔹 No decorators: use Lit's static property declaration
-  static properties = {
-    hass:             { attribute: false },
-    config:           { attribute: false },
-    _selectedGroup:   { state: true },
-    _deviceId:        { state: true },
-    _deviceEntities:  { state: true },
-    _loading:         { state: true },
-  };
-
+  // --- Styles ---
   static styles = css`
     ha-card {
       padding: 16px;
@@ -163,77 +154,123 @@ export class PlaytoproCard extends LitElement {
     }
   `;
 
-  // Assigned by Lovelace
-  public hass!: HomeAssistant;
-  public config!: PlayToProCardConfig;
+  // --- HA-managed "props" ---
+  private _hass?: HomeAssistant;           // backing field for getter/setter
+  private _config?: PlayToProCardConfig;   // set via setConfig()
 
-  // Internal state
-  private _selectedGroup = 0;
-  private _deviceId?: string;
-  private _deviceEntities: any[] = [];
-  private _loading = true;
-
-  public setConfig(config: PlayToProCardConfig): void {
-    if (!config.device_id) {
-      throw new Error("device_id is required");
+  // Expose hass as a property HA writes to repeatedly (React-like "new props")
+  public get hass() {
+    return this._hass as HomeAssistant;
+  }
+  public set hass(next: HomeAssistant) {
+    if (this._hass !== next) {
+      this._hass = next;
+      // If you want to react to every HA tick, do it here:
+      // Example: throttle or diff if necessary.
+      this.requestUpdate();
     }
-    this.config = config;
-    this._deviceId = config.device_id;
-    this._bootstrap();
   }
 
-  // Initial fetch (device + entities)
-  private async _bootstrap() {
-    if (!this.hass || !this._deviceId) return;
+  // --- Your internal "state" ---
+  private _loading: boolean;
+  private _selectedGroup: number;
+  private _deviceId?: string;
+  private _deviceEntities: Array<{ entity_id: string; [k: string]: unknown }>;
+
+  constructor() {
+    super();
+    // Initialize state (React constructor style)
     this._loading = true;
+    this._selectedGroup = 0;
+    this._deviceEntities = [];
+  }
+
+  // React: componentDidMount
+  connectedCallback() {
+    super.connectedCallback();
+    // Nothing special needed here yet (bootstrap happens in setConfig)
+  }
+
+  // React: componentWillUnmount
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    // Clean up timers/subscriptions if you add any later.
+  }
+
+  // Lovelace calls this exactly once with the card configuration (React: "receive initial props")
+  public setConfig(config: PlayToProCardConfig): void {
+    if (!config?.device_id) throw new Error("device_id is required");
+    this._config = config;
+    this._deviceId = config.device_id;
+    // Kick off async data fetch
+    void this._bootstrap();
+  }
+
+  // Async initializer for device + entities
+  private async _bootstrap() {
+    if (!this._hass || !this._deviceId) return;
+    this._loading = true;
+    this.requestUpdate();
 
     try {
-      // Load device registry
-      const devices = await this.hass.callWS<any[]>({
-        type: "config/device_registry/list",
-      });
+      const devices = await this._hass.callWS<any[]>({ type: "config/device_registry/list" });
       const device = devices.find((d) => d.id === this._deviceId);
       if (!device) {
-        // No device found—still render so user sees something
         this._deviceEntities = [];
         this._loading = false;
         this.requestUpdate();
         return;
       }
-
-      // Load entity registry for that device
-      const entities = await this.hass.callWS<any[]>({
-        type: "config/entity_registry/list",
-      });
+      const entities = await this._hass.callWS<any[]>({ type: "config/entity_registry/list" });
       this._deviceEntities = entities.filter((e) => e.device_id === this._deviceId);
-    } catch (_e) {
-      // Non-admin or WS error
+    } catch {
       this._deviceEntities = [];
     } finally {
       this._loading = false;
+      this.requestUpdate();     // React: setState(...), schedule render
     }
   }
 
-  // Switch between groups
-  private _groupChanged(e: CustomEvent) {
+  // React: shouldComponentUpdate
+  protected shouldUpdate(_changed: Map<string, unknown>) {
+    // Return false to skip renders if you need performance optimisations.
+    return true;
+  }
+
+  // React: componentDidUpdate(prevProps, prevState)
+  protected updated(_changed: Map<string, unknown>) {
+    // Post-render effects if needed.
+  }
+
+  // --- UI event handlers ---
+
+  private _groupChanged = (e: CustomEvent) => {
     const n = Number(e.detail.value);
-    if (!Number.isNaN(n)) this._selectedGroup = n;
-  }
-
-  private _entityClicked(e: Event) {
-    const target = e.currentTarget as HTMLElement;
-    const entityId = target.dataset.entityId;
-    if (entityId) {
-      fireEvent(this, "hass-more-info", { entityId });
+    if (!Number.isNaN(n) && n !== this._selectedGroup) {
+      this._selectedGroup = n;
+      this.requestUpdate();
     }
-  }
+  };
+
+  private _entityClicked = (e: Event) => {
+    const el = e.currentTarget as HTMLElement;
+    const entityId = el.dataset.entityId;
+    if (!entityId) return;
+
+    this.dispatchEvent(
+      new CustomEvent("hass-more-info", {
+        detail: { entityId },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  };
 
   private _informationClicked = (e: Event) => {
-    const target = e.currentTarget as HTMLElement;
-    const information = target.dataset.information?.trim();
+    const el = e.currentTarget as HTMLElement;
+    const information = el.dataset.information?.trim();
     if (!information) return;
 
-    // Unofficial, but commonly handled toast; works fine in practice.
     const evt = new CustomEvent<ShowNotificationEventDetail>("hass-notification", {
       detail: { message: information, duration: 8000 },
       bubbles: true,
@@ -241,15 +278,6 @@ export class PlaytoproCard extends LitElement {
     });
     this.dispatchEvent(evt);
   };
-
-  private async _toggleEntity(e: Event) {
-    const target = e.currentTarget as HTMLInputElement;
-    const entityId = target.dataset.entityId;
-    if (!entityId) return;
-    await this.hass.callService("switch", target.checked ? "turn_on" : "turn_off", {
-      entity_id: entityId,
-    });
-  }
 
   private _getIconForState(value: string): string {
     switch ((value ?? "").toLowerCase()) {
@@ -262,16 +290,31 @@ export class PlaytoproCard extends LitElement {
     }
   }
 
-  // Render --------------------------------------------------------------------
+  private async _toggleEntity(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const entityId = input.dataset.entityId;
+    if (!entityId || !this._hass) return;
+
+    await this._hass.callService("switch", input.checked ? "turn_on" : "turn_off", {
+      entity_id: entityId,
+    });
+    // HA state update will come via hass setter; requestUpdate() is harmless here
+    this.requestUpdate();
+  }
+
+  // --- render (React: render()) ---
 
   protected render() {
     if (this._loading) {
       return html`<ha-card><div>Loading entities…</div></ha-card>`;
     }
+    if (!this._hass || !this._config) {
+      return html`<ha-card><div>Waiting for Home Assistant…</div></ha-card>`;
+    }
 
-    const groupConfig: GroupConfig = entityConfig.groups[this._selectedGroup];
-    const groupEntityState: HassEntity | undefined = groupConfig.entity_id
-      ? this.hass.states[groupConfig.entity_id]
+    const groupCfg: GroupConfig = entityConfig.groups[this._selectedGroup];
+    const groupEntityState: HassEntity | undefined = groupCfg.entity_id
+      ? this._hass.states[groupCfg.entity_id]
       : undefined;
 
     return html`
@@ -281,22 +324,22 @@ export class PlaytoproCard extends LitElement {
           naturalMenuWidth
           .value=${String(this._selectedGroup)}
           @value-changed=${this._groupChanged}
-          .options=${entityConfig.groups.map((group, index) => ({
-            value: String(index),
-            icon: html`<ha-icon icon=${group.icon}></ha-icon>`,
+          .options=${entityConfig.groups.map((g, i) => ({
+            value: String(i),
+            icon: html`<ha-icon icon=${g.icon}></ha-icon>`,
           }))}
         >
         </ha-control-select>
 
         <div class="content">
           <div class="entity">
-            <span>${groupConfig.name}</span>
+            <span>${groupCfg.name}</span>
             <div style="display:flex;align-items:center;">
               ${groupEntityState
                 ? html`
                     <ha-switch
                       .checked=${groupEntityState.state === "on"}
-                      data-entity-id=${groupConfig.entity_id ?? ""}
+                      data-entity-id=${groupCfg.entity_id ?? ""}
                       @change=${this._toggleEntity}
                     ></ha-switch>
                     <ha-icon
@@ -304,7 +347,7 @@ export class PlaytoproCard extends LitElement {
                       aria-label="Information"
                       style="cursor:pointer"
                       icon="mdi:information"
-                      data-information=${groupConfig.information ?? ""}
+                      data-information=${groupCfg.information ?? ""}
                       @click=${this._informationClicked}
                     ></ha-icon>
                   `
@@ -313,15 +356,15 @@ export class PlaytoproCard extends LitElement {
           </div>
 
           ${entityConfig.zones.map((zoneId, index) => {
-            const zoneEntity = this._deviceEntities.find((e) => e.entity_id === zoneId);
-            if (!zoneEntity) return html``;
+            // Only show zone rows for entities that belong to this device
+            const zoneEntry = this._deviceEntities.find((e) => e.entity_id === zoneId);
+            if (!zoneEntry) return html``;
 
-            const zoneState: HassEntity | undefined = this.hass.states[zoneId];
-
-            const groupZoneId =
-              entityConfig.groups[this._selectedGroup].entities[index];
-            const groupZoneState: HassEntity | undefined =
-              groupZoneId ? this.hass.states[groupZoneId] : undefined;
+            const zoneState: HassEntity | undefined = this._hass!.states[zoneId];
+            const groupZoneId = entityConfig.groups[this._selectedGroup].entities[index];
+            const groupZoneState: HassEntity | undefined = groupZoneId
+              ? this._hass!.states[groupZoneId]
+              : undefined;
 
             if (!zoneState || !groupZoneId || !groupZoneState) return html``;
 
@@ -355,36 +398,34 @@ export class PlaytoproCard extends LitElement {
     `;
   }
 
+  // Lovelace sizing hint
+  public getCardSize(): number {
+    return 2 + entityConfig.zones.length;
+  }
+
+  // Lovelace editor factory
   static async getConfigElement() {
     return document.createElement("playtopro-card-editor");
   }
 
+  // Card picker stub
   public static getStubConfig(): PlayToProCardConfig {
     return { type: "playtopro-card", device_id: "" };
   }
-
-  public getCardSize(): number {
-    return 2 + entityConfig.zones.length;
-  }
 }
 
-// Explicit registration (no @customElement)
+// Register the element
 customElements.define("playtopro-card", PlaytoproCard);
 
-// Register card metadata for the picker
+// Optional: register metadata for the card picker
 declare global {
   interface HTMLElementTagNameMap {
     "playtopro-card": PlaytoproCard;
   }
   interface Window {
-    customCards?: Array<{
-      type: string;
-      name: string;
-      description: string;
-    }>;
+    customCards?: Array<{ type: string; name: string; description: string }>;
   }
 }
-
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "playtopro-card",

@@ -1,21 +1,19 @@
-import resolve from "@rollup/plugin-node-resolve";
+// rollup.config.mjs
+import resolve    from "@rollup/plugin-node-resolve";
 import typescript from "@rollup/plugin-typescript";
-import terser from "@rollup/plugin-terser";
+import terser     from "@rollup/plugin-terser";
 
 export default {
-  input: "src/playtopro-card.ts",           // your entry that imports the editor
+  input: "src/playtopro-card.ts",
   output: {
     file: "dist/playtopro-card.js",
     format: "es",
     sourcemap: false,
-    inlineDynamicImports: true,              // <- critical: disables chunking
+    inlineDynamicImports: true
   },
   plugins: [
     resolve({ extensions: [".mjs", ".js", ".ts"] }),
-    typescript({ tsconfig: "tsconfig.json", sourceMap: true }),
-    terser(),
-  ],
-  // Safety levers that also prevent code-splitting:
-  // preserveEntrySignatures: false,
-  // manualChunks: () => null,
+    typescript({ tsconfig: "tsconfig.json", sourceMap: false, inlineSources: false }),
+    terser()
+  ]
 };
