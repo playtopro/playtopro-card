@@ -10,8 +10,16 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "noEmit": true,
+
+    /* Make TS & the plugin stop asking for source maps */
+    "sourceMap": false,
+    "inlineSources": false,
+
+    /* Let Rollup control emitting; this flag is not required */
+    // "noEmit": true,
+
     "types": []
   },
-  "include": ["src/**/*.ts", "src/**/*.js"]
+  "include": ["src/**/*.ts", "src/**/*.js"],
+  "exclude": ["node_modules"]
 }

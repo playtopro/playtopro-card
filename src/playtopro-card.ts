@@ -2,10 +2,12 @@
 // Build as a single ES module (dist/playtopro-card.js) and load as a resource.
 
 import { LitElement, html, css } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
 import type { HassEntity } from "home-assistant-js-websocket";
 import type { HomeAssistant, LovelaceCardConfig } from "custom-card-helpers";
 import { fireEvent } from "custom-card-helpers";
+
+// Bundle the editor into the same output so HACS only needs one file
+import "./editor/playtopro-card-editor";
 
 // --- Types -------------------------------------------------------------------
 
@@ -116,8 +118,17 @@ const entityConfig: PlayToProConfig = {
 
 // --- Card implementation -----------------------------------------------------
 
-@customElement("playtopro-card")
 export class PlaytoproCard extends LitElement {
+  // 🔹 No decorators: use Lit's static property declaration
+  static properties = {
+    hass:             { attribute: false },
+    config:           { attribute: false },
+    _selectedGroup:   { state: true },
+    _deviceId:        { state: true },
+    _deviceEntities:  { state: true },
+    _loading:         { state: true },
+  };
+
   static styles = css`
     ha-card {
       padding: 16px;
@@ -134,18 +145,10 @@ export class PlaytoproCard extends LitElement {
       vertical-align: middle;
     }
     @keyframes pulse {
-      0% {
-        opacity: 1;
-      }
-      30% {
-        opacity: 0.4;
-      }
-      50% {
-        opacity: 1;
-      }
-      100% {
-        opacity: 1;
-      }
+      0% { opacity: 1; }
+      30% { opacity: 0.4; }
+      50% { opacity: 1; }
+      100% { opacity: 1; }
     }
     ha-icon.pulsing {
       animation: pulse 2.5s infinite;
@@ -160,15 +163,15 @@ export class PlaytoproCard extends LitElement {
     }
   `;
 
-  // Home Assistant instance is assigned by Lovelace
-  @property({ attribute: false }) public hass!: HomeAssistant;
+  // Assigned by Lovelace
+  public hass!: HomeAssistant;
+  public config!: PlayToProCardConfig;
 
-  @property({ attribute: false }) public config!: PlayToProCardConfig;
-
-  @state() private _selectedGroup = 0;
-  @state() private _deviceId?: string;
-  @state() private _deviceEntities: any[] = [];
-  @state() private _loading = true;
+  // Internal state
+  private _selectedGroup = 0;
+  private _deviceId?: string;
+  private _deviceEntities: any[] = [];
+  private _loading = true;
 
   public setConfig(config: PlayToProCardConfig): void {
     if (!config.device_id) {
@@ -230,7 +233,7 @@ export class PlaytoproCard extends LitElement {
     const information = target.dataset.information?.trim();
     if (!information) return;
 
-    // Unofficial, but commonly handled toast; see note in README.
+    // Unofficial, but commonly handled toast; works fine in practice.
     const evt = new CustomEvent<ShowNotificationEventDetail>("hass-notification", {
       detail: { message: information, duration: 8000 },
       bubbles: true,
@@ -249,7 +252,6 @@ export class PlaytoproCard extends LitElement {
   }
 
   private _getIconForState(value: string): string {
-    // Your original mapping
     switch ((value ?? "").toLowerCase()) {
       case "true":
         return "mdi:sprinkler-variant";
@@ -353,21 +355,21 @@ export class PlaytoproCard extends LitElement {
     `;
   }
 
-  // Optional: minimal editor (see editor file below)
   static async getConfigElement() {
     return document.createElement("playtopro-card-editor");
   }
 
-  // Shows in the card picker in UI
   public static getStubConfig(): PlayToProCardConfig {
     return { type: "playtopro-card", device_id: "" };
   }
 
-  // Grid sizing for sections view (optional), masonry size for classic
   public getCardSize(): number {
     return 2 + entityConfig.zones.length;
   }
 }
+
+// Explicit registration (no @customElement)
+customElements.define("playtopro-card", PlaytoproCard);
 
 // Register card metadata for the picker
 declare global {

@@ -1,5 +1,4 @@
 import { LitElement, html, nothing, css } from "lit";
-import { customElement, property } from "lit/decorators.js";
 import type { HomeAssistant, LovelaceCardEditor } from "custom-card-helpers";
 import type { PlayToProCardConfig } from "../playtopro-card";
 
@@ -11,13 +10,18 @@ type DeviceRegistryEntryLite = {
   manufacturer?: string;
 };
 
-@customElement("playtopro-card-editor")
 export class PlayToProCardEditor
   extends LitElement
   implements LovelaceCardEditor
 {
-  @property({ attribute: false }) public hass!: HomeAssistant;
-  @property({ attribute: false }) public config?: PlayToProCardConfig;
+  // 🔹 No decorators — use Lit's static property declaration
+  static properties = {
+    hass:  { attribute: false },
+    config:{ attribute: false },
+  };
+
+  public hass!: HomeAssistant;
+  public config?: PlayToProCardConfig;
 
   static styles = css`
     .card-config {
@@ -61,6 +65,9 @@ export class PlayToProCardEditor
     );
   };
 }
+
+// 🔹 Explicit registration (no @customElement)
+customElements.define("playtopro-card-editor", PlayToProCardEditor);
 
 declare global {
   interface HTMLElementTagNameMap {
