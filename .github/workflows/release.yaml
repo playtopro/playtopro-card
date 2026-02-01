@@ -45,6 +45,8 @@ jobs:
         with:
           files: |
             dist/playtopro-card.js
+            dist/playtopro-card-editor.js
+
           # Optional: auto-generate notes, or set name/body here
           # generate_release_notes: true
         env:

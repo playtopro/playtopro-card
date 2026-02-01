@@ -1,19 +1,18 @@
 // rollup.config.mjs
 import resolve from "@rollup/plugin-node-resolve";
 import typescript from "@rollup/plugin-typescript";
-import terser from "@rollup/plugin-terser"; // <-- default import
+import terser from "@rollup/plugin-terser";
 
-/** @type {import('rollup').RollupOptions} */
 export default {
-  input: "src/playtopro-card.ts",       // or .js if your source is JS
+  input: {
+    "playtopro-card": "src/playtopro-card.ts",
+    "playtopro-card-editor": "src/editor/playtopro-card-editor.ts",
+  },
   output: {
-    file: "dist/playtopro-card.js",
+    dir: "dist",
+    entryFileNames: "[name].js",
     format: "es",
     sourcemap: true,
   },
-  plugins: [
-    resolve({ extensions: [".mjs", ".js", ".ts"] }),
-    typescript({ tsconfig: "tsconfig.json", sourceMap: true }),
-    terser(),                           // <-- call the default export
-  ],
+  plugins: [resolve({ extensions: [".mjs", ".js", ".ts"] }), typescript(), terser()],
 };
