@@ -1,4 +1,3 @@
-
 {
   "name": "playtopro-card",
   "version": "0.1.0",
@@ -9,9 +8,12 @@
     "build:watch": "rollup -c -w"
   },
   "devDependencies": {
-    "rollup": "^4.0.0",
-    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-node-resolve": "^15.3.1",
     "@rollup/plugin-terser": "^0.4.4",
-    "rollup-plugin-copy": "^3.5.0"
+    "@rollup/plugin-typescript": "^12.3.0",
+    "custom-card-helpers": "^1.9.0",
+    "rollup": "^4.57.1",
+    "rollup-plugin-copy": "^3.5.0",
+    "typescript": "^5.9.3"
   }
 }
