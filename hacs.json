@@ -1,5 +1,5 @@
 {
   "name": "PlayToPro Card",
-  "filename": "dist/playtopro-card.js",
-  "homeassistant": "2024.1.0"
+  "filename": "playtopro-card.js",
+  "homeassistant": "2025.1.0"
 }
