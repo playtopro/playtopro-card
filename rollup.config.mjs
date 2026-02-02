@@ -1,7 +1,7 @@
-// rollup.config.mjs
-import resolve    from "@rollup/plugin-node-resolve";
+// rollup.config.mjs — single entry (simple and safe)
+import resolve from "@rollup/plugin-node-resolve";
 import typescript from "@rollup/plugin-typescript";
-import terser     from "@rollup/plugin-terser";
+import terser from "@rollup/plugin-terser";
 
 export default {
   input: "src/playtopro-card.ts",
@@ -9,7 +9,7 @@ export default {
     file: "dist/playtopro-card.js",
     format: "es",
     sourcemap: false,
-    inlineDynamicImports: true
+    inlineDynamicImports: true   // <— fold everything into one file
   },
   plugins: [
     resolve({ extensions: [".mjs", ".js", ".ts"] }),

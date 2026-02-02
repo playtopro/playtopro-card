@@ -5,9 +5,6 @@
 import { LitElement, html, css } from "lit";
 import type { HassEntity } from "home-assistant-js-websocket";
 import type { HomeAssistant, LovelaceCardConfig } from "custom-card-helpers";
-
-// Ship the editor in the same bundle so HACS only needs one file.
-// (The file below is provided in section 2)
 import "./editor/playtopro-card-editor";
 
 // ---------------- Types ----------------
@@ -158,21 +155,7 @@ export class PlaytoproCard extends LitElement {
   private _hass?: HomeAssistant;           // backing field for getter/setter
   private _config?: PlayToProCardConfig;   // set via setConfig()
 
-  // Expose hass as a property HA writes to repeatedly (React-like "new props")
-  public get hass() {
-    return this._hass as HomeAssistant;
-  }
-  public set hass(next: HomeAssistant) {
-    if (this._hass !== next) {
-      this._hass = next;
-      // If you want to react to every HA tick, do it here:
-      // Example: throttle or diff if necessary.
-      this.requestUpdate();
-    }
-  }
-
   // --- Your internal "state" ---
-  private _loading: boolean;
   private _selectedGroup: number;
   private _deviceId?: string;
   private _deviceEntities: Array<{ entity_id: string; [k: string]: unknown }>;
@@ -180,7 +163,6 @@ export class PlaytoproCard extends LitElement {
   constructor() {
     super();
     // Initialize state (React constructor style)
-    this._loading = true;
     this._selectedGroup = 0;
     this._deviceEntities = [];
   }
@@ -197,37 +179,43 @@ export class PlaytoproCard extends LitElement {
     // Clean up timers/subscriptions if you add any later.
   }
 
+  // Expose hass as a property HA writes to repeatedly (React-like "new props")
+  public get hass() {
+    return this._hass as HomeAssistant;
+  }
+
+  public set hass(next: HomeAssistant) {
+    if (this._hass !== next) {
+        this._hass = next;
+
+        if (this._deviceId) {
+            this.loadEntities();
+        }
+
+        this.requestUpdate();
+    }
+}
+
   // Lovelace calls this exactly once with the card configuration (React: "receive initial props")
   public setConfig(config: PlayToProCardConfig): void {
+    console.log("setConfig called");
     if (!config?.device_id) throw new Error("device_id is required");
     this._config = config;
     this._deviceId = config.device_id;
     // Kick off async data fetch
-    void this._bootstrap();
+    void this.loadEntities();
   }
 
   // Async initializer for device + entities
-  private async _bootstrap() {
+  private async loadEntities() {
     if (!this._hass || !this._deviceId) return;
-    this._loading = true;
-    this.requestUpdate();
 
     try {
-      const devices = await this._hass.callWS<any[]>({ type: "config/device_registry/list" });
-      const device = devices.find((d) => d.id === this._deviceId);
-      if (!device) {
-        this._deviceEntities = [];
-        this._loading = false;
-        this.requestUpdate();
-        return;
-      }
       const entities = await this._hass.callWS<any[]>({ type: "config/entity_registry/list" });
       this._deviceEntities = entities.filter((e) => e.device_id === this._deviceId);
     } catch {
-      this._deviceEntities = [];
-    } finally {
-      this._loading = false;
-      this.requestUpdate();     // React: setState(...), schedule render
+    } finally { 
+      this.requestUpdate();
     }
   }
 
@@ -305,7 +293,8 @@ export class PlaytoproCard extends LitElement {
   // --- render (React: render()) ---
 
   protected render() {
-    if (this._loading) {
+
+    if (this._deviceEntities.length === 0) {
       return html`<ha-card><div>Loading entities…</div></ha-card>`;
     }
     if (!this._hass || !this._config) {
@@ -429,6 +418,6 @@ declare global {
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "playtopro-card",
-  name: "PlayToPro Card",
-  description: "Control PlayToPro zones/groups (Auto, Eco, Sleep, Manual).",
+  name: "Playtopro Card",
+  description: "Organize and control lichen play zones.",
 });

@@ -14,7 +14,7 @@ export class PlayToProCardEditor
   extends LitElement
   implements LovelaceCardEditor
 {
-  // No decorators — React-style: explicit fields + static properties
+  // React-style: explicit fields + Lit reactive property table
   static properties = {
     hass:   { attribute: false },
     config: { attribute: false },
@@ -22,6 +22,7 @@ export class PlayToProCardEditor
 
   public hass!: HomeAssistant;
   public config?: PlayToProCardConfig;
+  private _pickerReady = false;
 
   static styles = css`
     .card-config {
@@ -31,33 +32,41 @@ export class PlayToProCardEditor
     }
   `;
 
+  /** HA calls this (may be slightly after first render). Be tolerant. */
   public setConfig(config: PlayToProCardConfig): void {
-    this.config = config;
+    this.config = config ?? { type: "playtopro-card", device_id: "" };
+    this.requestUpdate();
   }
 
   // Only show devices whose model matches your controller
   private _deviceFilter = (device: DeviceRegistryEntryLite): boolean =>
-    (device?.model ?? "").toLowerCase() === "lichen play";
+    (device?.model ?? "").toLowerCase() === "lichen play"
 
   protected render() {
-    if (!this.config) return nothing;
+    // First render can happen before setConfig() → show a tiny placeholder
+    if (!this.config) {
+      return html`<div class="card-config"><p>Loading editor…</p></div>`;
+    }
 
     return html`
       <div class="card-config">
-        <!-- <ha-device-picker> is provided by HA at runtime; no import needed -->
-        <ha-device-picker
-          .hass=${this.hass}
-          .value=${this.config.device_id}
-          .deviceFilter=${this._deviceFilter}
-          @value-changed=${this._onDeviceChanged}
-        ></ha-device-picker>
+        <ha-selector
+            .hass=${this.hass}
+            .value=${this.config.device_id}
+            .selector=${{ 
+                device: { 
+                filter: { model: "lichen play" } 
+                } 
+            }}
+            @value-changed=${this._onDeviceChanged}
+        ></ha-selector>
       </div>
     `;
   }
 
   private _onDeviceChanged = (ev: CustomEvent<{ value?: string }>) => {
-    const deviceId = ev.detail?.value ?? "";
-    this.config = { ...(this.config ?? { type: "playtopro-card" }), device_id: deviceId };
+    const device_id = ev.detail?.value ?? "";
+    this.config = { ...(this.config ?? { type: "playtopro-card" }), device_id };
     this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this.config } }));
   };
 }
