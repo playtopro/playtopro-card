@@ -199,7 +199,7 @@ export class PlaytoproCard extends LitElement {
   // Lovelace calls this exactly once with the card configuration (React: "receive initial props")
   public setConfig(config: PlayToProCardConfig): void {
     console.log("setConfig called");
-    if (!config?.device_id) throw new Error("device_id is required");
+    if (config.device_id === undefined) throw new Error("device_id is required");
     this._config = config;
     this._deviceId = config.device_id;
   }
@@ -297,6 +297,12 @@ export class PlaytoproCard extends LitElement {
     }
     if (!this._hass || !this._config) {
       return html`<ha-card><div>Waiting for Home Assistant…</div></ha-card>`;
+    }
+    if (this._config.device_id === undefined) {
+      return html`<ha-card><div>No device configured, check yaml...</div></ha-card>`;
+    }
+    if (this._config.device_id === "") {
+      return html`<ha-card><div>No device selected...</div></ha-card>`;
     }
 
     const groupCfg: GroupConfig = entityConfig.groups[this._selectedGroup];
