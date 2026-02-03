@@ -188,7 +188,7 @@ export class PlaytoproCard extends LitElement {
     if (this._hass !== next) {
         this._hass = next;
 
-        if (this._deviceId) {
+        if (this._deviceId && this._deviceEntities.length === 0) {
             this.loadEntities();
         }
 
@@ -202,8 +202,6 @@ export class PlaytoproCard extends LitElement {
     if (!config?.device_id) throw new Error("device_id is required");
     this._config = config;
     this._deviceId = config.device_id;
-    // Kick off async data fetch
-    void this.loadEntities();
   }
 
   // Async initializer for device + entities
@@ -399,7 +397,7 @@ export class PlaytoproCard extends LitElement {
 
   // Card picker stub
   public static getStubConfig(): PlayToProCardConfig {
-    return { type: "playtopro-card", device_id: "" };
+    return { type: "custom:playtopro-card", device_id: "" };
   }
 }
 
